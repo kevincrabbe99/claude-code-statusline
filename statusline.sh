@@ -236,7 +236,7 @@ segs+=("$dir_seg")
 # just surface the exact command (with the live session id) to copy-paste.
 # `cfork` is a shell function (see ~/.zshrc): cfork() { claude -r "$1" --fork-session; }
 if [ -n "$session_id" ]; then
-  segs+=("${GRAY}⑂ ${DIM}cfork ${session_id}${RESET}")
+  segs+=("${GRAY}⑂ cfork ${session_id}${RESET}")
 fi
 
 line=""
