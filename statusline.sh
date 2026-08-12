@@ -11,6 +11,7 @@ j() { printf '%s' "$input" | jq -r "$1" 2>/dev/null; }
 
 # --- Extract fields from JSON input ---
 cwd=$(j '.workspace.current_dir // .cwd // empty')
+session_id=$(j '.session_id // empty')
 model=$(j '.model.display_name // empty')
 output_style=$(j '.output_style.name // empty')
 used_pct=$(j '.context_window.used_percentage // empty')
@@ -229,6 +230,14 @@ segs+=("$dir_seg")
 [ -n "$ctx_str" ] && segs+=("$ctx_str")
 [ -n "$cost_str" ] && segs+=("$cost_str")
 [ -n "$duration_str" ] && segs+=("$duration_str")
+
+# --- Fork command: ready-to-paste command to fork this conversation into a
+# new terminal. Claude Code has no interactive/clickable status line, so we
+# just surface the exact command (with the live session id) to copy-paste.
+# `cfork` is a shell function (see ~/.zshrc): cfork() { claude -r "$1" --fork-session; }
+if [ -n "$session_id" ]; then
+  segs+=("${GRAY}⑂ ${DIM}cfork ${session_id}${RESET}")
+fi
 
 line=""
 for s in "${segs[@]}"; do
