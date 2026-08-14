@@ -8,10 +8,20 @@ It renders everything Claude Code exposes on stdin into one quiet, muted line:
 📁 racing-web/.claude/.../mfa-helper/scripts (feature-branch) +42 -7 │ 🤖 Opus │ ⚡ 34% used │ 💰 $0.87 │ ⏱ 12m │ ⑂ cfork a1b2c3d4-…
 ```
 
+In a git worktree it anchors to the *real* repo, badges the worktree name, and shows the branch:
+
+```
+📁 racing-web ⑂ tracks-results-list (spec/tracks-results-list) │ 🤖 Opus │ ⚡ 34% used │ …
+```
+
 ## Features
 
 - **Directory** — anchored to the repo root when you're inside a git repo (`repo/first/.../last2`),
   otherwise the last three path segments with `~` for home.
+- **Worktree aware** — inside a linked git worktree (e.g. `claude --worktree <name>`), the directory
+  still anchors to the *real* repo name (not the worktree dir, which normally masquerades as the repo),
+  and the worktree name is surfaced as a separate `⑂ <name>` badge. Detected by comparing `git rev-parse
+  --git-dir` against `--git-common-dir`, which differ only inside a linked worktree.
 - **Git branch** — hidden outside a repo, turns amber when the working tree is dirty, shows
   `detached@<sha>` when detached.
 - **Diff stats** — `+lines / -lines` for the session.

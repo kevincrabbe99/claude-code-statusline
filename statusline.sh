@@ -60,15 +60,42 @@ urlencode() {
 }
 
 # --- 1. Directory: anchor to repo root when inside a git repo, else last 3 segments ---
+# Worktree detection: inside a linked worktree, --show-toplevel points at the
+# worktree dir (e.g. racing-web/.claude/worktrees/tracks-results-list), which
+# makes the worktree name masquerade as the repo. We compare --git-dir against
+# --git-common-dir: they differ only in a linked worktree, and --git-common-dir
+# always points at the *real* repo's .git — so its parent is the true repo root.
 repo_root=""
+worktree_name=""       # non-empty only when in a linked worktree
+real_repo_name=""      # the actual repo, recovered via --git-common-dir
 if [ -n "$cwd" ] && command -v git >/dev/null 2>&1; then
   repo_root=$(GIT_OPTIONAL_LOCKS=0 git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)
+  if [ -n "$repo_root" ]; then
+    git_dir=$(GIT_OPTIONAL_LOCKS=0 git -C "$cwd" rev-parse --git-dir 2>/dev/null || true)
+    common_dir=$(GIT_OPTIONAL_LOCKS=0 git -C "$cwd" rev-parse --git-common-dir 2>/dev/null || true)
+    # Resolve both to absolute paths for a reliable comparison.
+    [ -n "$git_dir" ] && git_dir=$(cd "$cwd" 2>/dev/null && cd "$git_dir" 2>/dev/null && pwd)
+    [ -n "$common_dir" ] && common_dir=$(cd "$cwd" 2>/dev/null && cd "$common_dir" 2>/dev/null && pwd)
+    if [ -n "$common_dir" ] && [ "$git_dir" != "$common_dir" ]; then
+      # Linked worktree. --git-dir looks like <repo>/.git/worktrees/<name>.
+      worktree_name="${git_dir##*/}"
+      # Real repo root = parent of the common .git dir.
+      real_repo_root="${common_dir%/.git}"
+      real_repo_name="${real_repo_root##*/}"
+    fi
+  fi
 fi
 
 if [ -n "$repo_root" ]; then
   # Inside a repo: always keep <repo-name>, then the first sub-dir, "...",
   # and the last two segments — e.g. racing-web/.claude/.../mfa-helper/scripts
-  repo_name="${repo_root##*/}"
+  # In a linked worktree, anchor to the *real* repo name (recovered above),
+  # not the worktree dir name — the worktree is surfaced separately as a badge.
+  if [ -n "$worktree_name" ]; then
+    repo_name="$real_repo_name"
+  else
+    repo_name="${repo_root##*/}"
+  fi
   rel="${cwd#$repo_root}"
   rel="${rel#/}"
   if [ -z "$rel" ]; then
@@ -217,6 +244,12 @@ if [ -n "$cwd" ]; then
   dir_link="${OSC8_A}${file_url}${OSC8_B}${short_dir}${OSC8_C}"
 fi
 dir_seg="${GRAY}📁 ${dir_link}${RESET}"
+
+# Worktree badge: only shown inside a linked worktree. Sits between the real
+# repo name and the branch, so the line reads:  📁 racing-web ⑂ <wt> (<branch>)
+if [ -n "$worktree_name" ]; then
+  dir_seg="${dir_seg} ${YELLOW}⑂ ${worktree_name}${RESET}"
+fi
 
 # Branch text links to the GitHub compare/diff view (when we resolved a URL).
 if [ -n "$git_branch" ]; then
